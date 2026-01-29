@@ -22,9 +22,14 @@ public class PlayerMovement : MonoBehaviour
     private float dashTimer;
     private float dashCooldownTimer;
 
+    private PlayerAttack playerAttack;
+
+    public bool IsMoving => moveInput != Vector3.zero;
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        playerAttack = GetComponent<PlayerAttack>();
     }
 
     void Update()
@@ -33,17 +38,6 @@ public class PlayerMovement : MonoBehaviour
         float v = Input.GetAxisRaw("Vertical");
 
         moveInput = new Vector3(h, 0f, v).normalized;
-
-        // ROTATION ACCORDING TO THE MOVEMENT
-        if (moveInput != Vector3.zero && !isDashing)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(moveInput);
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                Time.deltaTime * 10f
-            );
-        }
 
         // JUMP
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded && !isDashing)
@@ -57,13 +51,26 @@ public class PlayerMovement : MonoBehaviour
             StartDash();
         }
 
-        // DASH COOLDOWN
         if (dashCooldownTimer > 0f)
             dashCooldownTimer -= Time.deltaTime;
     }
 
     void FixedUpdate()
     {
+        // NORMAL MOVEMENT ROTATION (WHEN NOT AIMING)
+        if (moveInput != Vector3.zero && !isDashing && !playerAttack.isAiming)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(moveInput);
+            rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, Time.fixedDeltaTime * 8f));
+        }
+
+        // ROTATION DURING AIMING
+        // USING ROTATION FROM PLAYERATTACK
+        if (playerAttack.isAiming && playerAttack.targetRotationAim != Quaternion.identity)
+        {
+            rb.MoveRotation(Quaternion.Slerp(rb.rotation, playerAttack.targetRotationAim, Time.fixedDeltaTime * 10f)); // Más rápido para apuntado
+        }
+
         if (isDashing)
         {
             dashTimer -= Time.fixedDeltaTime;
@@ -75,7 +82,7 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        rb.MovePosition(rb.position + moveInput * moveSpeed * Time.fixedDeltaTime);
+        rb.velocity = new Vector3(moveInput.x * moveSpeed, rb.velocity.y, moveInput.z * moveSpeed);
 
         if (rb.linearVelocity.y < 0)
         {

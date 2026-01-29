@@ -13,17 +13,58 @@ public class PlayerAttack : MonoBehaviour
     public float spreadAngle = 30f;
     public bool isFanAttack = false;
 
+    [HideInInspector] public bool isAiming;
+    public Quaternion targetRotationAim = Quaternion.identity;
+
     private float cooldownTimer;
+    private PlayerMovement playerMovement;
+
+    void Start()
+    {
+        playerMovement = GetComponent<PlayerMovement>();
+    }
 
     void Update()
     {
+        isAiming = Input.GetMouseButton(0) || Input.GetKey(KeyCode.LeftControl);
+
+        // ONLY ROTETE THE MOUSE WHEN:
+        // SHOOTING
+        // NOT MOVING
+        if (isAiming || !playerMovement.IsMoving)
+        {
+            RotateToMouse();
+        }
+
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        if ((Input.GetMouseButton(0) || Input.GetKey(KeyCode.LeftControl)) && cooldownTimer <= 0f)
+        if (isAiming && cooldownTimer <= 0f)
         {
             Attack();
             cooldownTimer = attackCooldown;
+        }
+    }
+
+    void RotateToMouse()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Plane groundPlane = new Plane(Vector3.up, transform.position);
+
+        if (groundPlane.Raycast(ray, out float distance))
+        {
+            Vector3 point = ray.GetPoint(distance);
+            Vector3 dir = point - transform.position;
+            dir.y = 0f;
+
+            if (dir.sqrMagnitude > 0.01f)
+            {
+                targetRotationAim = Quaternion.LookRotation(dir);
+            }
+        }
+        else
+        {
+            targetRotationAim = Quaternion.identity;
         }
     }
 
@@ -31,7 +72,6 @@ public class PlayerAttack : MonoBehaviour
     {
         if (isFanAttack && fanProjectilePrefab != null)
         {
-            // FAN SHOT
             float startAngle = -spreadAngle / 2f;
             float angleStep = spreadAngle / (fanProjectiles - 1);
 
@@ -44,7 +84,6 @@ public class PlayerAttack : MonoBehaviour
         }
         else
         {
-            // NORMAL SHOT
             Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         }
     }

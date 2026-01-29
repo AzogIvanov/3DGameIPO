@@ -10,24 +10,28 @@ public class CameraController : MonoBehaviour
 
     [Header("Smoothing Settings")]
     [Range(0.01f, 1f)]
-    public float positionSmoothing = 0.125f; // Más bajo = más suave
+    public float positionSmoothing = 0.01f;
 
     [Range(0.01f, 1f)]
     public float rotationSmoothing = 0.1f;
 
     private Vector3 velocity = Vector3.zero;
+    private Vector3 desiredPosition; // VARIABLE PARA FOCUS POINT
+
+    void FixedUpdate()
+    {
+        if (target == null) return;
+        // CALCULA DESIRED POSITION EN FIXEDUPDATE CON TIME.FIXEDDELTA
+        desiredPosition = target.position + offset;
+    }
 
     void LateUpdate()
     {
         if (target == null) return;
 
-        // Posición deseada
-        Vector3 desiredPosition = target.position + offset;
-
-        // SmoothDamp es mucho más suave que Lerp
         Vector3 smoothedPosition = Vector3.SmoothDamp(
             transform.position,
-            desiredPosition,
+            desiredPosition,  // Usa la posición calculada en FixedUpdate
             ref velocity,
             positionSmoothing
         );
